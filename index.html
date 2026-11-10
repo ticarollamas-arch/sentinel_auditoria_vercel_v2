@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="Auditoria externa, passiva e focada em exposições críticas.">
+  <title>Sentinel — Auditoria de Segurança</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark"><i></i><i></i><i></i></span><span>SENTINEL<span class="brand-sub">SECURITY INTELLIGENCE</span></span></a>
+    <div class="top-right"><span class="live-dot"></span><span>ENGINE ONLINE</span><span class="version">V 2.0</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="eyebrow"><span></span> EXTERNAL ATTACK SURFACE · READ-ONLY</div>
+      <h1>Encontre o que<br><em>não pode</em> ficar exposto.</h1>
+      <p class="hero-copy">Auditoria externa focada em evidências de exposição crítica. Sem exploração, sem força bruta e sem alterações no alvo.</p>
+      <div class="scan-card">
+        <div class="scan-card-head"><div><span class="tiny-label">NOVO DIAGNÓSTICO</span><h2>Iniciar auditoria</h2></div><div class="scan-icon">⌁</div></div>
+        <form id="scan-form">
+          <label for="domain">DOMÍNIO AUTORIZADO</label>
+          <div class="domain-input"><span>https://</span><input id="domain" name="domain" placeholder="empresa.com.br" autocomplete="url" required maxlength="253"><button id="scan-button" type="submit"><span>Executar análise</span><b>↗</b></button></div>
+          <div class="form-foot"><span>◇ Verificações externas de baixo impacto</span><span>⏱ 30–60 segundos</span></div>
+          <label class="authorization"><input id="authorized" type="checkbox" required><span>Confirmo que tenho autorização para auditar este domínio.</span></label>
+        </form>
+        <div class="progress-wrap" id="progress-wrap" hidden><div class="progress-label"><span id="progress-text">Preparando verificações...</span><span class="pulse"></span></div><div class="progress-track"><i></i></div></div>
+      </div>
+      <div class="trust-row"><div><strong>01</strong><span>Somente evidências</span></div><div><strong>02</strong><span>Foco em severidade crítica</span></div><div><strong>03</strong><span>Relatório exportável</span></div></div>
+    </section>
+    <section id="results" class="results" hidden>
+      <div class="results-head"><div><div class="eyebrow"><span></span> RESULTADO DA AUDITORIA</div><h2>Panorama de segurança</h2><p id="scan-meta"></p></div><button class="secondary" id="download-report">↓ Baixar relatório</button></div>
+      <div class="metrics"><article class="metric critical"><span>CRÍTICAS CONFIRMADAS</span><strong id="critical-count">0</strong><small>Com evidência verificável</small></article><article class="metric"><span>VERIFICAÇÕES</span><strong id="checks-count">0</strong><small>Testes externos executados</small></article><article class="metric"><span>STATUS HTTPS</span><strong id="https-status">—</strong><small id="https-detail">Conexão segura</small></article></div>
+      <div class="finding-panel"><div class="panel-head"><h3>Achados críticos</h3><span id="finding-state" class="status-pill">ANÁLISE CONCLUÍDA</span></div><div id="findings"></div></div>
+      <div class="finding-panel"><div class="panel-head"><h3>Observações técnicas</h3><span class="muted">CONTEXTO</span></div><div id="observations"></div></div>
+      <div class="ai-panel"><div class="ai-symbol">✳</div><div><span class="tiny-label">AI SECURITY REVIEW</span><h3>Interpretação técnica</h3><p id="ai-summary">—</p></div></div>
+      <p class="disclaimer">Este relatório representa uma verificação externa limitada, não um teste de intrusão nem uma certificação. Ausência de achados não comprova ausência de vulnerabilidades.</p>
+    </section>
+    <section class="method"><div class="eyebrow">MÉTODO</div><h2>Precisão antes de ruído.</h2><p>O Sentinel procura exposições públicas de alto impacto e só classifica um achado como crítico quando existe evidência direta. Não tenta autenticação, não envia payloads de exploração e não acessa áreas privadas.</p></section>
+  </main>
+  <footer><a class="brand small" href="#"><span class="brand-mark"><i></i><i></i><i></i></span><span>SENTINEL</span></a><span>SECURITY IS BUILT ON EVIDENCE.</span><span>© 2026 SENTINEL</span></footer>
+  <script src="/app.js" defer></script>
+</body></html>
