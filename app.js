@@ -5,12 +5,12 @@ function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt
 function render(report){
  latestReport=report;const findings=report.findings||[],obs=report.observations||[];
  $("#critical-count").textContent=findings.filter(x=>x.severity==="CRITICAL").length;
- $("#finding-state").textContent=findings.length?"EXPOSIÇÃO CONFIRMADA":"SEM CRÍTICA CONFIRMADA";
+ $("#finding-state").textContent=findings.length?"ACHADOS CONFIRMADOS":"SEM EXPOSIÇÃO CONFIRMADA";
  $("#checks-count").textContent=report.checks_run??0;
  $("#https-status").textContent=report.https?.ok?"OK":"FALHA";
  $("#https-detail").textContent=report.https?.ok?"TLS validado":"HTTPS não validado";
  $("#scan-meta").textContent=`${report.domain} · ${new Date(report.generated_at).toLocaleString("pt-BR")}`;
- $("#findings").innerHTML=findings.length?findings.map(f=>`<article class="finding"><div class="finding-top"><div><h4>${esc(f.title)}</h4><p>${esc(f.description)}</p></div><span class="severity">CRÍTICA</span></div><p><b>Impacto:</b> ${esc(f.impact)}</p><div class="evidence">${esc(f.evidence)}</div><p><b>Correção:</b> ${esc(f.remediation)}</p></article>`).join(""):`<div class="empty">Nenhuma exposição crítica foi confirmada nas verificações executadas.</div>`;
+ $("#findings").innerHTML=findings.length?findings.map(f=>`<article class="finding"><div class="finding-top"><div><h4>${esc(f.title)}</h4><p>${esc(f.description)}</p></div><span class="severity">${esc(f.severity||"HIGH")}</span></div><p><b>Impacto:</b> ${esc(f.impact)}</p><div class="evidence">${esc(f.evidence)}</div><p><b>Correção:</b> ${esc(f.remediation)}</p></article>`).join(""):`<div class="empty">Nenhuma exposição crítica foi confirmada nas verificações executadas.</div>`;
  $("#observations").innerHTML=obs.length?obs.map(o=>`<div class="finding"><h4>${esc(o.title)}</h4><p>${esc(o.detail)}</p></div>`).join(""):`<div class="empty">Nenhuma observação adicional.</div>`;
  $("#ai-summary").textContent=report.ai_summary||"Resumo por IA indisponível. Consulte as evidências técnicas acima.";
  if(report.limitations) $(".disclaimer").textContent=report.limitations;

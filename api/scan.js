@@ -9,28 +9,46 @@ const CONCURRENCY = 4;
 // A finding becomes CRITICAL only when a public response returns HTTP 200
 // and its body contains a strong marker for the exposed artifact.
 const PROBES = [
-  { path: "/.env", label: "Arquivo de ambiente (.env) exposto", marker: /(?:DB_PASSWORD|DATABASE_URL|AWS_SECRET_ACCESS_KEY|OPENAI_API_KEY|GEMINI_API_KEY|STRIPE_SECRET_KEY|SECRET_KEY)\s*=\s*[^\s#]{4,}/i, impact: "Pode expor credenciais de banco, nuvem ou serviços externos." },
-  { path: "/.env.production", label: "Arquivo .env de produção exposto", marker: /(?:DB_PASSWORD|DATABASE_URL|AWS_SECRET_ACCESS_KEY|SECRET_KEY|API_KEY)\s*=\s*[^\s#]{4,}/i, impact: "Pode expor segredos usados no ambiente de produção." },
-  { path: "/.git/config", label: "Configuração interna do Git exposta", marker: /^\s*\[core\]/im, impact: "Pode revelar repositórios e permitir recuperar código-fonte e histórico." },
-  { path: "/.git/HEAD", label: "Metadados do repositório Git expostos", marker: /^(?:ref:\s+refs\/heads\/|[a-f0-9]{40})/im, impact: "Confirma que metadados internos do repositório estão publicamente acessíveis." },
-  { path: "/.svn/entries", label: "Metadados do Subversion expostos", marker: /^(?:\d+\n|dir\n)/m, impact: "Pode revelar estrutura e metadados do código versionado." },
-  { path: "/backup.zip", label: "Backup ZIP público", binary: "zip", impact: "Pode permitir baixar cópias de segurança com dados ou código interno." },
-  { path: "/backup.tar.gz", label: "Backup TAR.GZ público", binary: "gzip", impact: "Pode permitir baixar cópias de segurança com dados ou código interno." },
-  { path: "/database.sql", label: "Dump SQL público", marker: /(?:CREATE\s+TABLE\s+|INSERT\s+INTO\s+|--\s*(?:MySQL|PostgreSQL))/i, impact: "Pode expor estrutura e registros do banco de dados." },
-  { path: "/db.sql", label: "Dump SQL público", marker: /(?:CREATE\s+TABLE\s+|INSERT\s+INTO\s+|--\s*(?:MySQL|PostgreSQL))/i, impact: "Pode expor estrutura e registros do banco de dados." },
-  { path: "/dump.sql", label: "Dump SQL público", marker: /(?:CREATE\s+TABLE\s+|INSERT\s+INTO\s+|--\s*(?:MySQL|PostgreSQL))/i, impact: "Pode expor estrutura e registros do banco de dados." },
-  { path: "/.DS_Store", label: "Índice de diretório macOS exposto", marker: /Bud1|Iloc| plst/i, impact: "Pode revelar nomes de arquivos e caminhos internos." },
-  { path: "/composer.auth.json", label: "Credenciais Composer expostas", marker: /(?:http-basic|github-oauth|bearer)\s*"?\s*:/i, impact: "Pode expor tokens privados de pacotes e repositórios." },
-  { path: "/.npmrc", label: "Configuração npm potencialmente secreta exposta", marker: /(?:_authToken|_password|:_auth)\s*=/i, impact: "Pode expor tokens de publicação ou acesso a pacotes privados." },
-  { path: "/wp-config.php", label: "Configuração WordPress exposta", marker: /(?:DB_NAME|DB_USER|DB_PASSWORD)\s*,\s*['\"]/i, impact: "Pode expor credenciais do banco de dados do WordPress." },
-  { path: "/id_rsa", label: "Chave privada SSH exposta", marker: /-----BEGIN (?:OPENSSH|RSA|EC) PRIVATE KEY-----/i, impact: "Pode permitir autenticação indevida em sistemas que confiem nessa chave." },
-  { path: "/.ssh/id_rsa", label: "Chave privada SSH exposta", marker: /-----BEGIN (?:OPENSSH|RSA|EC) PRIVATE KEY-----/i, impact: "Pode permitir autenticação indevida em sistemas que confiem nessa chave." },
-  { path: "/credentials.json", label: "Arquivo de credenciais JSON exposto", marker: /(?:client_secret|private_key|access_token|refresh_token)\s*"?\s*:/i, impact: "Pode expor credenciais de serviços e contas de aplicação." },
-  { path: "/service-account.json", label: "Credencial de conta de serviço exposta", marker: /"private_key"\s*:\s*"-----BEGIN PRIVATE KEY-----/i, impact: "Pode expor uma chave privada de conta de serviço." },
-  { path: "/config/database.yml", label: "Configuração de banco Rails exposta", marker: /(?:password|username|database):\s*[^#\s][^\n]*/i, impact: "Pode revelar credenciais e nomes de bancos de dados." },
-  { path: "/phpinfo.php", label: "Página phpinfo pública", marker: /PHP Version|phpinfo\(\)/i, impact: "Pode revelar versões, caminhos, variáveis e configuração interna do servidor." },
-  { path: "/server-status", label: "Status interno do Apache público", marker: /Apache Server Status|Server uptime|Total accesses/i, impact: "Pode revelar requisições, clientes e detalhes operacionais do servidor." },
-  { path: "/actuator/env", label: "Endpoint Spring Actuator env público", marker: /"propertySources"\s*:\s*\[|"activeProfiles"\s*:/i, impact: "Pode revelar variáveis e propriedades do ambiente da aplicação." }
+  // Secrets and configuration files: CRITICAL only when secret-like values appear.
+  ...['/.env','/.env.local','/.env.production','/.env.development','/.env.backup','/.env.old','/.env.save','/config/.env','/app/.env'].map(path => ({path,label:'Arquivo de ambiente exposto',kind:'secrets',impact:'Pode expor credenciais de banco, nuvem e serviços externos.'})),
+  {path:'/.npmrc',label:'Token npm exposto',kind:'npm',impact:'Pode permitir acesso ou publicação em pacotes privados.'},
+  {path:'/composer.auth.json',label:'Credenciais Composer expostas',kind:'composer',impact:'Pode expor tokens de repositórios e pacotes privados.'},
+  {path:'/credentials.json',label:'Arquivo de credenciais exposto',kind:'jsonsecrets',impact:'Pode expor credenciais de serviços e contas de aplicação.'},
+  {path:'/service-account.json',label:'Chave de conta de serviço exposta',kind:'serviceaccount',impact:'Pode permitir acesso a recursos vinculados à conta de serviço.'},
+  {path:'/.aws/credentials',label:'Credenciais AWS expostas',kind:'aws',impact:'Pode permitir acesso à conta AWS conforme as permissões da chave.'},
+  {path:'/wp-config.php',label:'Configuração WordPress exposta',kind:'wpconfig',impact:'Pode expor credenciais do banco de dados WordPress.'},
+  {path:'/config.php',label:'Arquivo de configuração PHP exposto',kind:'phpconfig',impact:'Pode revelar credenciais e segredos da aplicação.'},
+  {path:'/config.yml',label:'Arquivo de configuração YAML exposto',kind:'yamlconfig',impact:'Pode revelar credenciais e parâmetros internos.'},
+  {path:'/config/database.yml',label:'Configuração de banco Rails exposta',kind:'yamlconfig',impact:'Pode revelar credenciais e nomes de bancos de dados.'},
+  {path:'/id_rsa',label:'Chave privada SSH exposta',kind:'privatekey',impact:'Pode permitir autenticação indevida em sistemas que confiem nessa chave.'},
+  {path:'/.ssh/id_rsa',label:'Chave privada SSH exposta',kind:'privatekey',impact:'Pode permitir autenticação indevida em sistemas que confiem nessa chave.'},
+  {path:'/private.key',label:'Chave privada exposta',kind:'privatekey',impact:'Pode comprometer serviços que utilizem essa chave.'},
+  {path:'/database.sql',label:'Dump SQL público',kind:'sql',impact:'Pode expor estrutura e registros do banco de dados.'},
+  {path:'/db.sql',label:'Dump SQL público',kind:'sql',impact:'Pode expor estrutura e registros do banco de dados.'},
+  {path:'/dump.sql',label:'Dump SQL público',kind:'sql',impact:'Pode expor estrutura e registros do banco de dados.'},
+  {path:'/backup.sql',label:'Backup SQL público',kind:'sql',impact:'Pode expor estrutura e registros do banco de dados.'},
+  {path:'/backup.zip',label:'Backup ZIP público',kind:'zip',impact:'Pode permitir baixar cópias de segurança com dados ou código interno.'},
+  {path:'/backup.tar.gz',label:'Backup TAR.GZ público',kind:'gzip',impact:'Pode permitir baixar cópias de segurança com dados ou código interno.'},
+  {path:'/site-backup.zip',label:'Backup do site público',kind:'zip',impact:'Pode expor arquivos e dados internos.'},
+  {path:'/www.zip',label:'Arquivo compactado do site público',kind:'zip',impact:'Pode expor código-fonte e arquivos internos.'},
+  // Source-control metadata and operational consoles.
+  {path:'/.git/config',label:'Configuração interna do Git exposta',kind:'gitconfig',impact:'Pode revelar repositórios e facilitar recuperação do código-fonte.'},
+  {path:'/.git/HEAD',label:'Metadados do repositório Git expostos',kind:'githead',impact:'Confirma exposição de metadados internos do repositório.'},
+  {path:'/.git/index',label:'Índice do repositório Git exposto',kind:'gitindex',impact:'Pode revelar nomes e estrutura de arquivos versionados.'},
+  {path:'/.svn/entries',label:'Metadados Subversion expostos',kind:'svn',impact:'Pode revelar estrutura e metadados do código versionado.'},
+  {path:'/.svn/wc.db',label:'Banco interno Subversion exposto',kind:'sqlite',impact:'Pode revelar caminhos e metadados do código versionado.'},
+  {path:'/.DS_Store',label:'Índice de diretório macOS exposto',kind:'dsstore',impact:'Pode revelar nomes de arquivos e caminhos internos.'},
+  {path:'/phpinfo.php',label:'Página phpinfo pública',kind:'phpinfo',impact:'Pode revelar versões, caminhos, variáveis e configuração interna.'},
+  {path:'/server-status',label:'Status interno Apache público',kind:'apachestatus',impact:'Pode revelar requisições, clientes e detalhes operacionais.'},
+  {path:'/actuator/env',label:'Spring Actuator env público',kind:'actuatorenv',impact:'Pode revelar variáveis e propriedades do ambiente da aplicação.'},
+  {path:'/actuator/configprops',label:'Spring Actuator configprops público',kind:'actuatorconfig',impact:'Pode revelar configurações internas da aplicação.'},
+  {path:'/actuator/mappings',label:'Spring Actuator mappings público',kind:'actuatormappings',impact:'Pode revelar rotas internas e superfície de API.'},
+  {path:'/_profiler/',label:'Symfony Profiler público',kind:'profiler',impact:'Pode revelar consultas, parâmetros e detalhes internos de execução.'},
+  {path:'/_debugbar/open',label:'Laravel Debugbar público',kind:'debugbar',impact:'Pode revelar consultas, sessões e dados de depuração.'},
+  {path:'/telescope',label:'Laravel Telescope público',kind:'telescope',impact:'Pode revelar eventos, requisições e informações operacionais.'},
+  {path:'/swagger.json',label:'Documentação Swagger pública',kind:'swagger',impact:'Expõe a descrição das rotas da API; valide se a publicação é intencional.'},
+  {path:'/openapi.json',label:'Especificação OpenAPI pública',kind:'openapi',impact:'Expõe a descrição das rotas da API; valide se a publicação é intencional.'},
+  {path:'/v3/api-docs',label:'Documentação Spring API pública',kind:'openapi',impact:'Expõe a descrição das rotas da API; valide se a publicação é intencional.'}
 ];
 
 function isPrivateIP(ip) {
@@ -185,13 +203,48 @@ export default async function handler(req, res) {
         checks++;
         if (![200,206].includes(r.status) || r.redirected) return null;
         const contentType = (r.headers.get("content-type") || "").toLowerCase();
-        let confirmed = false, markerText = "";
-        if (item.binary === "zip") confirmed = r.prefix_hex.startsWith("504b0304") || /application\/(?:zip|x-zip)/i.test(contentType);
-        else if (item.binary === "gzip") confirmed = r.prefix_hex.startsWith("1f8b");
-        else confirmed = item.marker.test(r.body);
+        const body = r.body;
+        const tests = {
+          secrets: /(?:DB_PASSWORD|DATABASE_URL|AWS_SECRET_ACCESS_KEY|OPENAI_API_KEY|GEMINI_API_KEY|STRIPE_SECRET_KEY|SECRET_KEY|JWT_SECRET|SMTP_PASSWORD)\s*[:=]\s*["']?[^\s"'#]{6,}/i,
+          npm: /(?:_authToken|_password|:_auth)\s*=\s*[^\s#]{8,}/i,
+          composer: /(?:http-basic|github-oauth|bearer)\s*["']?\s*:\s*["']?[^\s"']{8,}/i,
+          jsonsecrets: /(?:client_secret|private_key|access_token|refresh_token)\s*["']?\s*:\s*["']?[^\s"']{8,}/i,
+          serviceaccount: /"private_key"\s*:\s*"-----BEGIN PRIVATE KEY-----/i,
+          aws: /(?:aws_access_key_id\s*=\s*AKIA[0-9A-Z]{16}|aws_secret_access_key\s*=\s*[A-Za-z0-9/+=]{30,})/i,
+          wpconfig: /define\s*\(\s*["']DB_(?:NAME|USER|PASSWORD)["']\s*,\s*["'][^"']+["']/i,
+          phpconfig: /(?:password|secret|api[_-]?key)\s*["']?\s*=>\s*["'][^"']{6,}["']/i,
+          yamlconfig: /(?:password|secret|api[_-]?key):\s*["']?[^\s#"']{6,}/i,
+          privatekey: /-----BEGIN (?:OPENSSH|RSA|EC|ENCRYPTED) PRIVATE KEY-----/i,
+          sql: /(?:CREATE\s+TABLE\s+|INSERT\s+INTO\s+|--\s*(?:MySQL|PostgreSQL))/i,
+          zip: null, gzip: null,
+          gitconfig: /^\s*\[core\]/im,
+          githead: /^(?:ref:\s+refs\/heads\/|[a-f0-9]{40})/im,
+          gitindex: null, svn: /^(?:\d+\n|dir\n)/m, sqlite: null, dsstore: /Bud1|Iloc| plst/i,
+          phpinfo: /<title>phpinfo\(\)<\/title>|PHP Version|phpinfo\(\)/i,
+          apachestatus: /Apache Server Status|Server uptime|Total accesses/i,
+          actuatorenv: /"propertySources"\s*:\s*\[|"activeProfiles"\s*:/i,
+          actuatorconfig: /"contexts"\s*:\s*\{|"beans"\s*:\s*\{/i,
+          actuatormappings: /"contexts"\s*:\s*\{|"mappings"\s*:\s*\{/i,
+          profiler: /Symfony\s+Profiler|_profiler|token.*collector/i,
+          debugbar: /Laravel Debugbar|debugbar|phpdebugbar/i,
+          telescope: /Laravel Telescope|telescope\.entries|Telescope/i,
+          swagger: /"swagger"\s*:\s*"2\.|"openapi"\s*:\s*"3\./i,
+          openapi: /"openapi"\s*:\s*"3\./i
+        };
+        let confirmed = false, markerText = "", severity = "HIGH";
+        if (item.kind === "zip") { confirmed = r.prefix_hex.startsWith("504b0304"); markerText = "assinatura ZIP válida"; severity = "CRITICAL"; }
+        else if (item.kind === "gzip") { confirmed = r.prefix_hex.startsWith("1f8b"); markerText = "assinatura GZIP válida"; severity = "CRITICAL"; }
+        else if (item.kind === "gitindex") { confirmed = r.prefix_hex.startsWith("44495243"); markerText = "assinatura Git DIRC"; }
+        else if (item.kind === "sqlite") { confirmed = body.startsWith("SQLite format 3"); markerText = "assinatura SQLite válida"; }
+        else {
+          const re = tests[item.kind]; confirmed = !!re && re.test(body);
+          markerText = confirmed ? `marcador compatível: ${body.match(re)?.[0]?.slice(0,90) || item.kind}` : "";
+        }
         if (!confirmed) return null;
-        markerText = item.binary ? `assinatura/Content-Type compatível com ${item.binary}` : `marcador de conteúdo: ${r.body.match(item.marker)?.[0]?.slice(0,90) || "confirmado"}`;
-        return {title:item.label,severity:"CRITICAL",description:`O endpoint ${item.path} respondeu HTTP 200 e apresentou evidência compatível com o artefato exposto.`,impact:item.impact,evidence:`GET ${item.path} → HTTP ${r.status}; Content-Type: ${contentType||"não informado"}; ${markerText}; ${r.bytes_read} bytes lidos.`,remediation:"Remova o artefato da raiz pública, bloqueie o caminho no servidor/CDN, invalide e substitua segredos que possam ter sido expostos e preserve os logs para investigação."};
+        if (["secrets","npm","composer","jsonsecrets","serviceaccount","aws","wpconfig","phpconfig","yamlconfig","privatekey","sql","zip","gzip"].includes(item.kind)) severity = "CRITICAL";
+        if (["swagger","openapi","actuatormappings"].includes(item.kind)) severity = "INFO";
+        if (item.kind === "actuatorenv" && /(?:password|secret|token|api[_-]?key)\s*["']?\s*:\s*["']?[^\s"']{6,}/i.test(body)) severity = "CRITICAL";
+        return {title:item.label,severity,description:`O endpoint ${item.path} respondeu HTTP ${r.status} e apresentou conteúdo compatível com a exposição identificada.`,impact:item.impact,evidence:`GET ${item.path} → HTTP ${r.status}; Content-Type: ${contentType||"não informado"}; ${markerText}; ${r.bytes_read} bytes lidos.`,remediation:"Remova ou restrinja o artefato no servidor/CDN. Se houver segredo, revogue e gere outro imediatamente. Preserve logs e valide a correção com nova auditoria."};
       } catch { return null; }
     });
     for (const finding of probeResults) if (finding) findings.push(finding);
@@ -213,8 +266,8 @@ export default async function handler(req, res) {
       domain:host, generated_at:new Date().toISOString(), checks_run:checks,
       https, findings, observations, ai_summary,
       verdict: findings.length ? "EXPOSIÇÃO CRÍTICA CONFIRMADA" : "NENHUMA EXPOSIÇÃO CRÍTICA CONFIRMADA",
-      methodology:"Requisições HTTPS GET limitadas, sem autenticação, exploração, força bruta, upload ou alteração de dados. Achados críticos exigem HTTP 200 e marcador de conteúdo compatível.",
-      limitations:"A ausência de achados não prova que o domínio esteja seguro. Esta auditoria externa não substitui DAST autenticado, SAST, revisão de código ou pentest autorizado."
+      methodology:"Requisições HTTPS GET limitadas para caminhos públicos conhecidos, sem autenticação, exploração, força bruta, upload ou alteração de dados. Achados críticos exigem HTTP 200/206 e evidência de conteúdo ou assinatura compatível; documentação pública recebe INFO, não CRITICAL.",
+      limitations:"A ausência de achados não prova que o domínio esteja seguro. Caminhos não padronizados, conteúdo protegido por login, WAF, respostas dinâmicas e limites de leitura podem ocultar exposições. Esta auditoria não substitui DAST autenticado, SAST, revisão de código ou pentest autorizado."
     });
   } catch (e) {
     return res.status(400).json({error:e.message||"Não foi possível executar a auditoria."});
