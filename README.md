@@ -1,0 +1,2 @@
+# sentinel_auditoria_vercel_v2
+Repositório criado automaticamente via ZipToGit
